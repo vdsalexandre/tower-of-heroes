@@ -4,7 +4,6 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { catchError, map, tap } from 'rxjs/operators';
 
 import { Hero } from './hero';
-import { HEROES } from './mock-heroes';
 import { MessageService } from './message.service';
 
 @Injectable({
@@ -26,6 +25,20 @@ export class HeroService {
       .pipe(
         tap(_ => this.log('fetched heroes')),
         catchError(this.handleError<Hero[]>('getHeroes', []))
+      );
+  }
+
+  getHeroNo404<Data>(id: number): Observable<Hero> {
+    const url = `${this.heroesUrl}/?id=${id}`;
+
+    return this.http.get<Hero[]>(url)
+      .pipe(
+        map(heroes => heroes[0]), // returns a { 0 | 1 } element array
+        tap(h => {
+          const outcome = h ? `fetched` : `did not found`;
+          this.log(`${outcome} hero id = ${id}`);
+        }),
+        catchError(this.handleError<Hero>(`getHero id = ${id}`))
       );
   }
 
@@ -75,5 +88,15 @@ export class HeroService {
       this.log(`${operation} failed: ${error.message}`);
       return of(result as T);
     }
+  }
+
+  searchHeroes(term: string): Observable<Hero[]> {
+    if (!term.trim())
+      return of([]);
+
+    return this.http.get<Hero[]>(`${this.heroesUrl}/?name=${term}`).pipe(
+        tap(x => x.length ? this.log(`found heroes matching "${term}"`) : this.log(`no heroes matching "${term}"`)),
+        catchError(this.handleError<Hero[]>('searchHeroes', []))
+      );
   }
 }
